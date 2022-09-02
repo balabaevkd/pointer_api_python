@@ -52,3 +52,16 @@ def parce_pointer(result):
     result_df['ratings_count'] = list(ratings_df['ratings_count'])
     
     return(result_df)
+
+def offset_cycle(key, network_uuid):
+    datasets = []
+    
+    shift = 0
+    for i in range(4):
+        datasets.append(get_shops_dataframe(key, network_uuid, shift))
+        shift += 50
+        time.sleep(2)
+        
+    result = pd.concat(datasets)
+        
+    return(result)    
