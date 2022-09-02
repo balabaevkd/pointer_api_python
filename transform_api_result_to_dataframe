@@ -1,0 +1,54 @@
+def parce_pointer(result):
+
+    ## Группа списков для первичной обработки (рейтинги остаются словарями)
+    tmp_list = []
+    df_list = []
+    dfs_to_concat = []
+
+    ## Преобразование объекта типа Request в DataFrame, содержащий таблицу из кривых JSON'ов
+    df = pd.DataFrame(result.json())
+    
+    ## Логика обработки JSON
+    ## DUMPS --> LOADS --> DATAFRAME
+    
+    ## Преобразование кривых JSON'ов в строчные (string) под внутренний парсер библиотеки JSON
+    for item in df['items']:
+        tmp_list.append(json.dumps(item))
+    ## Преобразование строк (string) в словари   
+    for i in tmp_list:
+        df_list.append(json.loads(i))
+    ##  Преобразование словарей в DataFrame'ы. На выходе получаем список из объектов типа 'Pandas DataFrame'
+    for i in df_list:
+        dfs_to_concat.append(pd.DataFrame(i))
+    ## Сбор списка объектов 'Pandas DataFrame' в единую таблицу построчным соединением
+    result_df = pd.concat(dfs_to_concat)
+    
+    ## Отсечение колонки 'ratings'. Далее будем обрабатывать ее отдельно от остального датасета
+    ratings = result_df['ratings']
+    result_df = result_df.drop(['ratings'], axis = 1)
+    
+    ## Создаем аналогичные промежуточные списки для парсина 'ratings'
+    ## ratings представляет собой тип данных 'Pandas Series'
+    
+    def parce_pd_series(series):
+        ## Преобразовываем Series в список, чтобы по нему было проще вести цикл
+        ## Создаем временный список для отправки туда объектов DataFrame
+        series_list = list(series)
+        tmp_list_2 = []
+        ## В нашем случае значения в 'ratings' уже являются словарями, поэтому просто переводим их в список 'Pandas DataFrame'
+        for i in series_list:
+            tmp_list_2.append(pd.DataFrame(i, index=[0]))
+        ## Собираем объекты в общий датасет
+        result_for_ratings = pd.concat(tmp_list_2)
+        
+        return(result_for_ratings)
+    
+    ### Обрабатываем Series с рейтингами
+    ratings_df = parce_pd_series(ratings)
+    ## Присоединяем столбцы из ratings_df к основному датасету
+    
+    result_df['avg_rating'] = list(ratings_df['avg_rating'])
+    result_df['provider_id'] = list(ratings_df['provider_id'])
+    result_df['ratings_count'] = list(ratings_df['ratings_count'])
+    
+    return(result_df)
