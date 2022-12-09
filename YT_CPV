@@ -1,0 +1,41 @@
+
+import pandas as pd
+import requests as rq
+import json
+import re
+
+sheet_id = "###"
+sheet_name = "etl"
+
+url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+
+
+dataset = pd.read_csv(url)
+dataset = dataset[['channel', 'costs', 'video_url']]
+
+
+def get_vid_id(string):
+    id_start_pos = string.find('.be/') + 4
+    return(string[id_start_pos:])
+
+def get_viewCount(vid_id):
+    request = rq.get(url = f"https://www.googleapis.com/youtube/v3/videos?id={vid_id}&key=###&part=statistics")
+    #time.sleep(1)
+    result = request.json()
+    if result['items'] == []:
+        return(0)
+    else:
+        vc = result['items'][0]['statistics']['viewCount']
+        vc_int = int(vc)
+        return(vc)
+
+dataset['id'] = dataset['video_url'].apply(lambda x: get_vid_id(x))
+dataset['views'] = dataset['id'].apply(lambda x: get_viewCount(x))
+dataset['views'] = pd.to_numeric(dataset['views'])
+dataset = dataset[dataset['views'] != 0]
+dataset['costs'] = dataset['costs'].apply(lambda x: re.sub(r"\s+", "", x))
+dataset['costs'] = pd.to_numeric(dataset['costs'])
+dataset['cpv'] = dataset['costs'] / dataset['views']
+
+
+print(dataset)
